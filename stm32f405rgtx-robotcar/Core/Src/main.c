@@ -321,7 +321,18 @@ void left_turn() {
 	motor(30000, 0);
 }
 
-#define NORMAL_SPEED (50000)
+#define NORMAL_SPEED (40000)
+#define INNER_PERCENTAGE_COMPENSATION (0.05)
+#define OUTER_PERCENTAGE_COMPENSATION (0.25)
+
+double exp_like(unsigned char larger, unsigned char smaller) {
+    return ((IS_NTH_BIT_ONE(larger, 1) * (OUTER_PERCENTAGE_COMPENSATION)) +
+    		(IS_NTH_BIT_ONE(larger, 0) * (INNER_PERCENTAGE_COMPENSATION))) -
+    		((IS_NTH_BIT_ONE(smaller, 1) * (OUTER_PERCENTAGE_COMPENSATION)) +
+    		(IS_NTH_BIT_ONE(smaller, 0) * (INNER_PERCENTAGE_COMPENSATION)));
+
+	// return  (x + (x * x) + (x * x * x));
+}
 
 int left = 0;
 int right = 0;
@@ -810,11 +821,11 @@ int main(void)
 			sensor_right = get_right();
 
 			if (sensor_left > sensor_right) {
-				left = NORMAL_SPEED + ((-1) * (int)exp((sensor_left - sensor_right) * 3.3));
+				left = NORMAL_SPEED + ((-1) * (int)(NORMAL_SPEED * exp_like(sensor_left, sensor_right)));
 				right = NORMAL_SPEED;
 			} else if (sensor_right > sensor_left) {
 				left = NORMAL_SPEED;
-				right = NORMAL_SPEED + ((-1) * (int)exp((sensor_right - sensor_left) * 3.3));
+				right = NORMAL_SPEED + ((-1) * (int)(NORMAL_SPEED * exp_like(sensor_right, sensor_left)));
 			} else {
 				left = NORMAL_SPEED;
 				right = NORMAL_SPEED;
