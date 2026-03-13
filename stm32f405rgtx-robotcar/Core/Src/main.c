@@ -244,24 +244,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 		else if (Is_First_Captured==1)   // if the first is already captured
 		{
 			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);  // read second value
-			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
+			// __HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 
 			if (IC_Val2 > IC_Val1)
 			{
-				Difference = IC_Val2-IC_Val1;
+				Distance = (IC_Val2-IC_Val1) * 340 / (SystemCoreClock / 1000000) / 2 / (1000 / htim->Init.Prescaler);
 			}
 
-			else if (IC_Val1 > IC_Val2)
-			{
-				Difference = (0xffff - IC_Val1) + IC_Val2;
-			}
-
-			Distance = Difference * .034/2;
 			Is_First_Captured = 0; // set it back to false
 
-			// set polarity to rising edge
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
-			//__HAL_TIM_DISABLE_IT(&htim8, TIM_IT_CC1);
 		}
 	}
 }
@@ -655,13 +647,13 @@ void delay (uint16_t time)
 	while (__HAL_TIM_GET_COUNTER (&htim8) < time);
 }
 
-void HCSR04_Read (void)
-{
-	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);  // pull the TRIG pin HIGH
-	delay(10);  // wait for 10 us
-	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);  // pull the TRIG pin low
 
-	__HAL_TIM_ENABLE_IT(&htim8, TIM_IT_CC1);
+
+void sr04_trigger(void){
+  // Send pulse to trigger pin
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
+  HAL_Delay(1);
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
 }
 
 uint32_t get_left_counter_value() {
@@ -671,6 +663,13 @@ uint32_t get_left_counter_value() {
 
 uint32_t get_right_counter_value() {
 	return  __HAL_TIM_GET_COUNTER(&htim5);
+}
+
+void sr04_init(){
+	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
+	__HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
+	HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_1);
+	HAL_TIM_Base_Start_IT(&htim8);
 }
 
 /* USER CODE END 0 */
@@ -738,11 +737,6 @@ int main(void)
 	// HAL_ADC_Start_IT(&hadc1); // ADC interrupt handler
 	HAL_ADC_Start_IT(&hadc2); // ADC interrupt handler
 
-	HAL_TIM_IC_Init(&htim8);
-	HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_1);
-
-
-
 	ssd1306_Init();
 	ssd1306_Fill(White);
 	ssd1306_UpdateScreen();
@@ -754,6 +748,8 @@ int main(void)
 	ssd1306_WriteString("RobotCar", Font_11x18, White);
 	ssd1306_UpdateScreen();
 
+	sr04_init();
+
 	HAL_Delay(1000);
 
 	memset(tx_buffer,'\0', sizeof(tx_buffer));
@@ -764,7 +760,7 @@ int main(void)
 
 	HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)&tx_buffer, sizeof(tx_buffer));
 
-    HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
+
 
   /* USER CODE END 2 */
 
@@ -785,17 +781,9 @@ int main(void)
 //
 //		ssd1306_SetCursor(0, 0);  // Set cursor to the top of the display
 //		ssd1306_WriteString(buffer, Font_11x18, White);
-//
 
-//		if (ultrasonic_counter > 1000 && !is_working) {
-//			is_working = true;
-//
-		HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
-		__HAL_TIM_ENABLE_IT(&htim8, TIM_IT_CC1);
-		__HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
-//		}
+		sr04_trigger();
 
-		HCSR04_Read();
 		// set_crossroad_count();
 
 		// index = get_current_checkpoint_index();
@@ -826,12 +814,8 @@ int main(void)
 			}
 		}
 
-//		if (is_crossroad(index)) {
-//
-//		}
-
 		// 0 is leftmost
-		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c] %dcm",
+		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c] %d mm",
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 0)),
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 1)),
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 2)),
