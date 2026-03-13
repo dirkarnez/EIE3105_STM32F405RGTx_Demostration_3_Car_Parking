@@ -200,10 +200,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	}
 }
 
-uint32_t ultrasonic_counter = 0;
 
-float distance = 0.0f;
-bool is_working = false;
+
 
 //void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 //	if (htim->Instance == TIM8) {
@@ -220,10 +218,7 @@ bool is_working = false;
 //			HAL_TIM_IC_Stop_IT(htim, TIM_CHANNEL_1);
 //			// __HAL_TIM_DISABLE_IT(&htim1, TIM_IT_CC1);
 //			distance = (((falling_edge_instant > rising_edge_instant) ? 0 : 0xFFFF) + falling_edge_instant - rising_edge_instant) * 0.017;  // cm
-//
-//			ultrasonic_counter = 0;
 //			HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
-//			is_working = false;
 //		}
 //	}
 //}
@@ -769,7 +764,6 @@ int main(void)
 
 	HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)&tx_buffer, sizeof(tx_buffer));
 
-    ultrasonic_counter = 0;
     HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
 
   /* USER CODE END 2 */
@@ -796,12 +790,12 @@ int main(void)
 //		if (ultrasonic_counter > 1000 && !is_working) {
 //			is_working = true;
 //
-//			HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
-//			__HAL_TIM_ENABLE_IT(&htim8, TIM_IT_CC1);
-//			__HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
+		HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
+		__HAL_TIM_ENABLE_IT(&htim8, TIM_IT_CC1);
+		__HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
 //		}
 
-		// HCSR04_Read();
+		HCSR04_Read();
 		// set_crossroad_count();
 
 		// index = get_current_checkpoint_index();
@@ -837,13 +831,13 @@ int main(void)
 //		}
 
 		// 0 is leftmost
-		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c]",
+		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c] %dcm",
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 0)),
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 1)),
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 2)),
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 3)),
 				print_true(IS_NTH_BIT_ONE(sensor_array_value, 4))
-				/*, Distance*/
+				, Distance
 		);
 
 		ssd1306_SetCursor(0, 0);
