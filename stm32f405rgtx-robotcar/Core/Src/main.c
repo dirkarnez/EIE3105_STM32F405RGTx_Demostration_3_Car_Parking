@@ -325,8 +325,9 @@ void left_turn() {
 
 int left = 0;
 int right = 0;
-int sensor_left = 0;
-int sensor_right = 0;
+
+unsigned char sensor_left = 0;
+unsigned char sensor_right = 0;
 
 //void follow_line() {
 //    if (is_center_on_only()) {
@@ -809,11 +810,11 @@ int main(void)
 			sensor_right = get_right();
 
 			if (sensor_left > sensor_right) {
-				left = NORMAL_SPEED * 0.9;
+				left = NORMAL_SPEED + ((-1) * (int)exp((sensor_left - sensor_right) * 3.3));
 				right = NORMAL_SPEED;
 			} else if (sensor_right > sensor_left) {
 				left = NORMAL_SPEED;
-				right = NORMAL_SPEED * 0.9;
+				right = NORMAL_SPEED + ((-1) * (int)exp((sensor_right - sensor_left) * 3.3));
 			} else {
 				left = NORMAL_SPEED;
 				right = NORMAL_SPEED;
@@ -839,12 +840,16 @@ int main(void)
 
 		// [STM32 UART Receive via IDLE Line – Interrupt & DMA Tutorial](https://controllerstech.com/stm32-uart-5-receive-data-using-idle-line/)
 		// snprintf(buffer, sizeof(buffer), "%04d, %04d", x_axis_adc0, y_axis_adc1); // 4,294,967,295
-		snprintf(buffer, sizeof(buffer), "L: %"PRIu32"", get_left_counter_value());
+
+
+
+		// snprintf(buffer, sizeof(buffer), "L: %"PRIu32"", get_left_counter_value());
+		snprintf(buffer, sizeof(buffer), "L: %d", left);
 		ssd1306_SetCursor(0, 25); // Set cursor below the GPIO states
 		ssd1306_WriteString(buffer, Font_11x18, White);
 
-
-		snprintf(buffer, sizeof(buffer), "R: %"PRIu32"", get_right_counter_value()); // 4,294,967,295
+		// snprintf(buffer, sizeof(buffer), "R: %"PRIu32"", get_right_counter_value()); // 4,294,967,295
+		snprintf(buffer, sizeof(buffer), "R: %d", right);
 		ssd1306_SetCursor(0, 45); // Set cursor below the voltage/current display
 		ssd1306_WriteString(buffer, Font_11x18, White);
 
