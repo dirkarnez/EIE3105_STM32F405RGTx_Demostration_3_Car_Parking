@@ -321,7 +321,7 @@ void left_turn() {
 	motor(30000, 0);
 }
 
-#define NORMAL_SPEED (25000)
+#define NORMAL_SPEED (50000)
 
 int left = 0;
 int right = 0;
@@ -349,8 +349,6 @@ int sensor_right = 0;
 //    motor(right, left);
 //}
 
-static char map[] = { 0, 0, 0, 0, 0 };
-
 #define CHECKPOINT_A_INDEX (0)
 #define CHECKPOINT_B_INDEX (1)
 #define CHECKPOINT_C_INDEX (2)
@@ -368,16 +366,16 @@ int get_current_checkpoint_index() {
 }
 */
 
-int get_current_checkpoint_index() {
-    int last_completed_index = -1;
-	for (int i = sizeof(map) - 1; i >= 0; i--) {
-		if (map[i] > 0) {
-            last_completed_index = i;
-            break;
-		}
-	}
-	return (last_completed_index + 1) % sizeof(map);
-}
+//int get_current_checkpoint_index() {
+//    int last_completed_index = -1;
+//	for (int i = sizeof(map) - 1; i >= 0; i--) {
+//		if (map[i] > 0) {
+//            last_completed_index = i;
+//            break;
+//		}
+//	}
+//	return (last_completed_index + 1) % sizeof(map);
+//}
 
 int is_crossroad(int idx) {
 	if (idx == CHECKPOINT_C_INDEX) {
@@ -659,13 +657,13 @@ void HCSR04_Read (void)
 	__HAL_TIM_ENABLE_IT(&htim8, TIM_IT_CC1);
 }
 
-uint32_t get_left_counter_value(uint32_t offset) {
-	return __HAL_TIM_GET_COUNTER(&htim2) - offset;
+uint32_t get_left_counter_value() {
+	return __HAL_TIM_GET_COUNTER(&htim2);
 }
 
 
-uint32_t get_right_counter_value(uint32_t offset) {
-	return  __HAL_TIM_GET_COUNTER(&htim5) - offset;
+uint32_t get_right_counter_value() {
+	return  __HAL_TIM_GET_COUNTER(&htim5);
 }
 
 /* USER CODE END 0 */
@@ -761,12 +759,6 @@ int main(void)
 
     ultrasonic_counter = 0;
     HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
-    int index = 0;
-    int is_turning = 0;
-    uint32_t left_snapshot = 0;
-    uint32_t right_snapshot = 0;
-    uint32_t left_offset = 0;
-    uint32_t right_offset = 0;
 
   /* USER CODE END 2 */
 
@@ -800,7 +792,7 @@ int main(void)
 		// HCSR04_Read();
 		// set_crossroad_count();
 
-		index = get_current_checkpoint_index();
+		// index = get_current_checkpoint_index();
 
 		sensor_array_value = ADC_TO_BINARY(ADC2Array[4], 4) |
 		    ADC_TO_BINARY(ADC2Array[3], 3) |
@@ -847,12 +839,12 @@ int main(void)
 
 		// [STM32 UART Receive via IDLE Line – Interrupt & DMA Tutorial](https://controllerstech.com/stm32-uart-5-receive-data-using-idle-line/)
 		// snprintf(buffer, sizeof(buffer), "%04d, %04d", x_axis_adc0, y_axis_adc1); // 4,294,967,295
-		snprintf(buffer, sizeof(buffer), "[%c] %d%d%d%d%d", print_checkpoint(index), map[0], map[1], map[2], map[3],map[4]);
+		snprintf(buffer, sizeof(buffer), "L: %"PRIu32"", get_left_counter_value());
 		ssd1306_SetCursor(0, 25); // Set cursor below the GPIO states
 		ssd1306_WriteString(buffer, Font_11x18, White);
 
 
-		snprintf(buffer, sizeof(buffer), "%"PRIu32", %"PRIu32"", get_left_counter_value(left_offset), get_right_counter_value(right_offset)); // 4,294,967,295
+		snprintf(buffer, sizeof(buffer), "R: %"PRIu32"", get_right_counter_value()); // 4,294,967,295
 		ssd1306_SetCursor(0, 45); // Set cursor below the voltage/current display
 		ssd1306_WriteString(buffer, Font_11x18, White);
 
