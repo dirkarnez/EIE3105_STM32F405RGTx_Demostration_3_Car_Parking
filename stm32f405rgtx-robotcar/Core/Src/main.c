@@ -809,11 +809,11 @@ int main(void)
 			sensor_right = get_right();
 
 			if (sensor_left > sensor_right) {
-				left = 15000;
+				left = NORMAL_SPEED * 0.9;
 				right = NORMAL_SPEED;
 			} else if (sensor_right > sensor_left) {
 				left = NORMAL_SPEED;
-				right = 15000;
+				right = NORMAL_SPEED * 0.9;
 			} else {
 				left = NORMAL_SPEED;
 				right = NORMAL_SPEED;
