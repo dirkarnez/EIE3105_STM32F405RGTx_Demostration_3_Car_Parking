@@ -227,31 +227,29 @@ uint32_t IC_Val1 = 0;
 uint32_t IC_Val2 = 0;
 uint32_t Difference = 0;
 uint8_t Is_First_Captured = 0;  // is the first value captured ?
-uint8_t Distance  = 0; //cm
+uint32_t Distance  = 0; //cm
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // if the interrupt source is channel1
 	{
-		if (Is_First_Captured==0) // if the first value is not captured
+		if (Is_First_Captured == 0) // if the first value is not captured
 		{
 			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
 			Is_First_Captured = 1;  // set the first captured as true
 			// Now change the polarity to falling edge
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_FALLING);
-		}
-
-		else if (Is_First_Captured==1)   // if the first is already captured
+		} else if (Is_First_Captured == 1)   // if the first is already captured
 		{
 			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);  // read second value
+			Is_First_Captured = 0; // set it back to false
+
 			// __HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 
 			if (IC_Val2 > IC_Val1)
 			{
-				Distance = (IC_Val2-IC_Val1) * 340 / (SystemCoreClock / 1000000) / 2 / (1000 / htim->Init.Prescaler);
+				Distance = (IC_Val2 - IC_Val1) * 340 / (SystemCoreClock / 1000000) / 2 / (1000 / (htim->Init.Prescaler));/** .034/2;/* */
 			}
-
-			Is_First_Captured = 0; // set it back to false
 
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
 		}
@@ -641,13 +639,11 @@ char print_checkpoint(int idx) {
 }
 
 
-void delay (uint16_t time)
-{
-	__HAL_TIM_SET_COUNTER(&htim8, 0);
-	while (__HAL_TIM_GET_COUNTER (&htim8) < time);
-}
-
-
+//void delay (uint16_t time)
+//{
+//	__HAL_TIM_SET_COUNTER(&htim8, 0);
+//	while (__HAL_TIM_GET_COUNTER (&htim8) < time);
+//}
 
 void sr04_trigger(void){
   // Send pulse to trigger pin
@@ -670,6 +666,16 @@ void sr04_init(){
 	__HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
 	HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_1);
 	HAL_TIM_Base_Start_IT(&htim8);
+}
+
+static uint32_t counter1;
+
+uint32_t elapsed_ms( void ) {
+    static uint32_t previous;
+    uint32_t ms = HAL_GetTick();
+    uint32_t diff = ms - previous;
+    previous = ms;
+    return diff;
 }
 
 /* USER CODE END 0 */
@@ -782,7 +788,11 @@ int main(void)
 //		ssd1306_SetCursor(0, 0);  // Set cursor to the top of the display
 //		ssd1306_WriteString(buffer, Font_11x18, White);
 
-		sr04_trigger();
+		counter1 += elapsed_ms();
+		if( counter1 >= 50 ) {
+		    counter1 = 0;
+		    sr04_trigger();
+		}
 
 		// set_crossroad_count();
 
@@ -793,7 +803,6 @@ int main(void)
 		    ADC_TO_BINARY(ADC2Array[2], 2) |
 		    ADC_TO_BINARY(ADC2Array[1], 1) |
 		    ADC_TO_BINARY(ADC2Array[0], 0);
-
 
 		if (is_center_on_only()) {
 			left = NORMAL_SPEED;
@@ -815,15 +824,16 @@ int main(void)
 		}
 
 		// 0 is leftmost
-		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c] %d mm",
-				print_true(IS_NTH_BIT_ONE(sensor_array_value, 0)),
-				print_true(IS_NTH_BIT_ONE(sensor_array_value, 1)),
-				print_true(IS_NTH_BIT_ONE(sensor_array_value, 2)),
-				print_true(IS_NTH_BIT_ONE(sensor_array_value, 3)),
-				print_true(IS_NTH_BIT_ONE(sensor_array_value, 4))
-				, Distance
-		);
+//		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c] %d mm",
+//				print_true(IS_NTH_BIT_ONE(sensor_array_value, 0)),
+//				print_true(IS_NTH_BIT_ONE(sensor_array_value, 1)),
+//				print_true(IS_NTH_BIT_ONE(sensor_array_value, 2)),
+//				print_true(IS_NTH_BIT_ONE(sensor_array_value, 3)),
+//				print_true(IS_NTH_BIT_ONE(sensor_array_value, 4))
+//				, Distance
+//		);
 
+		snprintf(buffer, sizeof(buffer), "%"PRIu32" mm, %"PRIu32" s", Distance, counter1);
 		ssd1306_SetCursor(0, 0);
 		ssd1306_WriteString(buffer, Font_11x18, White);
 
