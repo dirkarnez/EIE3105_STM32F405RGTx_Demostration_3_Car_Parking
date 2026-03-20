@@ -227,7 +227,7 @@ uint32_t IC_Val1 = 0;
 uint32_t IC_Val2 = 0;
 uint32_t Difference = 0;
 uint8_t Is_First_Captured = 0;  // is the first value captured ?
-uint32_t Distance  = 0; //cm
+uint32_t Distance = 0; //mm
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
@@ -248,7 +248,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
 			if (IC_Val2 > IC_Val1)
 			{
-				Distance = (IC_Val2 - IC_Val1) * 340 / (SystemCoreClock / 1000000) / 2 / (1000 / (htim->Init.Prescaler));/** .034/2;/* */
+				Distance = (IC_Val2 - IC_Val1) * 340 / (SystemCoreClock / 1000000) / 2 / (1000 / (htim->Init.Prescaler));
 			}
 
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
@@ -678,6 +678,10 @@ uint32_t elapsed_ms( void ) {
     return diff;
 }
 
+uint32_t map(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -754,6 +758,8 @@ int main(void)
 	ssd1306_WriteString("RobotCar", Font_11x18, White);
 	ssd1306_UpdateScreen();
 
+	uint32_t speed = 0;
+
 	sr04_init();
 
 	HAL_Delay(1000);
@@ -797,6 +803,13 @@ int main(void)
 		// set_crossroad_count();
 
 		// index = get_current_checkpoint_index();
+		if (Distance < 120) {
+			speed = 0;
+		} else if (Distance < 350 && Distance >= 120) {
+			speed = (uint32_t)((map(Distance, 120, 350, 0, 100) * NORMAL_SPEED) / 100);
+		} else {
+			speed = NORMAL_SPEED;
+		}
 
 		sensor_array_value = ADC_TO_BINARY(ADC2Array[4], 4) |
 		    ADC_TO_BINARY(ADC2Array[3], 3) |
@@ -805,23 +818,25 @@ int main(void)
 		    ADC_TO_BINARY(ADC2Array[0], 0);
 
 		if (is_center_on_only()) {
-			left = NORMAL_SPEED;
-			right = NORMAL_SPEED;
+			left = speed;
+			right = speed;
 		} else {
 			sensor_left = get_left();
 			sensor_right = get_right();
 
 			if (sensor_left > sensor_right) {
-				left = NORMAL_SPEED + ((-1) * (int)(NORMAL_SPEED * exp_like(sensor_left, sensor_right)));
-				right = NORMAL_SPEED;
+				left = speed + ((-1) * (int)(speed * exp_like(sensor_left, sensor_right)));
+				right = speed;
 			} else if (sensor_right > sensor_left) {
-				left = NORMAL_SPEED;
-				right = NORMAL_SPEED + ((-1) * (int)(NORMAL_SPEED * exp_like(sensor_right, sensor_left)));
+				left = speed;
+				right = speed + ((-1) * (int)(speed * exp_like(sensor_right, sensor_left)));
 			} else {
-				left = NORMAL_SPEED;
-				right = NORMAL_SPEED;
+				left = speed;
+				right = speed;
 			}
 		}
+
+
 
 		// 0 is leftmost
 //		snprintf(buffer, sizeof(buffer), "[%c%c%c%c%c] %d mm",
@@ -833,7 +848,7 @@ int main(void)
 //				, Distance
 //		);
 
-		snprintf(buffer, sizeof(buffer), "%"PRIu32" mm, %"PRIu32" s", Distance, counter1);
+		snprintf(buffer, sizeof(buffer), "%"PRIu32" mm, %"PRIu32" s", Distance, speed);
 		ssd1306_SetCursor(0, 0);
 		ssd1306_WriteString(buffer, Font_11x18, White);
 
